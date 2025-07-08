@@ -3,6 +3,9 @@ import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 todo_map = {}
+
+
+
 next_id = 1
 
 class ToDoHandler(BaseHTTPRequestHandler): #new custom class ToDoHandler  used to handle HTTP requests,
