@@ -3,9 +3,6 @@ import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 todo_map = {}
-
-
-
 next_id = 1
 
 class ToDoHandler(BaseHTTPRequestHandler): #new custom class ToDoHandler  used to handle HTTP requests,
@@ -83,6 +80,42 @@ class ToDoHandler(BaseHTTPRequestHandler): #new custom class ToDoHandler  used t
                    "todo": {next_id: todo_map[next_id]}
                })
                next_id += 1
+
+           elif self.path == "/delete":
+               content_length = int(self.headers['Content-Length'])
+               if content_length == 0:
+                   self.send_json_response({
+                       "status": "error",
+                       "message": "provide id to delete"
+                   },status_code=400)
+                   return
+
+               post_data = self.rfile.read(content_length)
+
+               try:
+                   postData = json.loads(post_data)
+               except json.JSONDecodeError:
+                   self.send_json_response({
+                       "status": "error",
+                       "message": "Invalid JSON"
+                   },status_code=400)
+                   return
+
+               todo_id = postData.get("id")
+               if not isinstance(todo_id,int):
+                   self.send_json_response({
+                       "status": "error",
+                       "message": "Todo id must be an integer"
+                   },status_code=400)
+                   return
+
+               if todo_id in todo_map:
+                   deleted = todo_map.pop(todo_id)
+                   self.send_json_response({
+                       "status": "ok",
+                       "message": f"Todo ID {todo_id} deleted",
+                       "deleted": {todo_id: deleted}
+                   })
 
            else:
                self.send_json_response({
