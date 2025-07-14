@@ -7,7 +7,13 @@ This is a minimal **ToDo List Web Application** built using:
 - CRUD operations for todos
 
 ---
+## 📸 Screenshots
 
+| Login / Signup                         | ToDo List                              |
+|----------------------------------------|----------------------------------------|
+| ![Login Screen](screenshots/login.JPG) | ![Todo List](screenshots/TodoList.JPG) |
+
+---
 ## 🚀 Features
 
 ✅ User Registration and Login  
