@@ -1,15 +1,30 @@
 #server which handless todos and http routing
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import hashlib
 
+users_map= {}
 todo_map = {}
 next_id = 1
 
+def hash_password(password):
+
+    return hashlib.sha256(password.encode()).hexdigest()
+
 class ToDoHandler(BaseHTTPRequestHandler): #new custom class ToDoHandler  used to handle HTTP requests,
     # It inherits from BaseHTTPRequestHandler
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
     def send_json_response(self,data,status_code=200):
         self.send_response(status_code)
         self.send_header("Content-type","application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
@@ -27,26 +42,26 @@ class ToDoHandler(BaseHTTPRequestHandler): #new custom class ToDoHandler  used t
 
     def do_POST(self):
         global next_id
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length == 0:
+            self.send_json_response({
+                "status": "error",
+                "message": "No data received"
+            }, status_code=400)
+            return
+
+        post_data = self.rfile.read(content_length)
+
+        try:
+            postData = json.loads(post_data)
+        except json.JSONDecodeError:
+            self.send_json_response({
+                "status": "error",
+                "message": "invalid JSON"
+            }, status_code=400)
+            return
+
         if self.path == "/add":
-            content_length = int(self.headers.get('Content-Length', 0))
-            if content_length == 0:
-                self.send_json_response({
-                    "status": "error",
-                    "message": "please provide todos"
-                }, status_code=400)
-                return
-
-            post_data = self.rfile.read(content_length)
-
-            try:
-                postData = json.loads(post_data)
-            except json.JSONDecodeError:
-                self.send_json_response({
-                    "status": "error",
-                    "message": "invalid JSON"
-                }, status_code=400)
-                return
-
             if 'todo' not in postData or not postData['todo'].strip():
                 self.send_json_response({
                     "status": "error",
@@ -82,26 +97,47 @@ class ToDoHandler(BaseHTTPRequestHandler): #new custom class ToDoHandler  used t
             })
             next_id += 1
 
+        elif self.path == "/register":
+            username = postData.get("username")
+            password = postData.get("password")
+
+            if not username or not password:
+                self.send_json_response({
+                    "status": "error",
+                    "message": "Username and password required"
+                }, 400)
+                return
+
+            if username in users_map:
+                self.send_json_response({
+                    "status": "error",
+                    "message": "Username already exists"
+                }, 400)
+                return
+
+            users_map[username] = hash_password(password)
+            self.send_json_response({
+                "status": "ok",
+                "message": "User registered successfully"
+            })
+
+        elif self.path == "/login":
+            username = postData.get("username")
+            password = postData.get("password")
+
+            if username not in users_map or users_map[username] != hash_password(password):
+                self.send_json_response({
+                    "status": "error",
+                    "message": "Invalid username or password"
+                }, 401)
+                return
+
+            self.send_json_response({
+                "status": "ok",
+                "message": f"Welcome, {username}!"
+            })
+
         elif self.path == "/delete":
-            content_length = int(self.headers['Content-Length'])
-            if content_length == 0:
-                self.send_json_response({
-                    "status": "error",
-                    "message": "provide id to delete"
-                }, status_code=400)
-                return
-
-            post_data = self.rfile.read(content_length)
-
-            try:
-                postData = json.loads(post_data)
-            except json.JSONDecodeError:
-                self.send_json_response({
-                    "status": "error",
-                    "message": "Invalid JSON"
-                }, status_code=400)
-                return
-
             todo_id = postData.get("id")
             if not isinstance(todo_id, int):
                 self.send_json_response({
@@ -117,6 +153,7 @@ class ToDoHandler(BaseHTTPRequestHandler): #new custom class ToDoHandler  used t
                     "message": f"Todo ID {todo_id} deleted",
                     "deleted": {todo_id: deleted}
                 })
+
 
         else:
             self.send_json_response({
